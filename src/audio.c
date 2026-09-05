@@ -30,6 +30,7 @@ typedef struct {
 struct AudioEngine {
     SDL_AudioDeviceID device;
     bool enabled;
+    bool insertion_only;
 
     SDL_SpinLock lock;
     AudioVoice voices[MAX_VOICES];
@@ -57,7 +58,8 @@ static void audio_callback(void* userdata, Uint8* stream, int len) {
     memcpy(local_voices, audio->voices, sizeof(local_voices));
     float dc_x = audio->dc_x_prev;
     float dc_y = audio->dc_y_prev;
-    SDL_AtomicUnlock(&audio->lock);
+    /* Keep state locked until render completion so cleared/replaced voices
+     * cannot be resurrected by stale callback writeback. */
 
     bool any_active = false;
     for (int v = 0; v < MAX_VOICES; ++v) {
@@ -68,6 +70,7 @@ static void audio_callback(void* userdata, Uint8* stream, int len) {
     }
 
     if (!any_active) {
+        SDL_AtomicUnlock(&audio->lock);
         memset(stream, 0, len);
         return;
     }
@@ -129,8 +132,7 @@ static void audio_callback(void* userdata, Uint8* stream, int len) {
         buffer[i] = (Sint16)(filtered * 32767.0f);
     }
 
-    /* Write back voice states and filter state */
-    SDL_AtomicLock(&audio->lock);
+    /* Write back voice states and filter state under the same lock. */
     for (int v = 0; v < MAX_VOICES; ++v) {
         audio->voices[v].samples_elapsed = local_voices[v].samples_elapsed;
         audio->voices[v].phase = local_voices[v].phase;
@@ -182,12 +184,16 @@ void audio_shutdown(AudioEngine* audio) {
     free(audio);
 }
 
-void audio_play_tone(AudioEngine* audio, float freq, float duration) {
-    if (!audio || !audio->enabled) return;
+static void play_sound(AudioEngine* audio, float freq, float duration, bool insertion) {
+    if (!audio) return;
     int count = (int)(SAMPLE_RATE * duration);
     if (count <= 0) return;
 
     SDL_AtomicLock(&audio->lock);
+    if (!audio->enabled || (audio->insertion_only && !insertion)) {
+        SDL_AtomicUnlock(&audio->lock);
+        return;
+    }
     /* Find an inactive voice */
     int slot = -1;
     for (int i = 0; i < MAX_VOICES; ++i) {
@@ -238,6 +244,14 @@ void audio_play_tone(AudioEngine* audio, float freq, float duration) {
     SDL_AtomicUnlock(&audio->lock);
 }
 
+void audio_play_tone(AudioEngine* audio, float freq, float duration) {
+    play_sound(audio, freq, duration, false);
+}
+
+void audio_play_insert_click(AudioEngine* audio) {
+    play_sound(audio, 1100.0f, CLICK_DURATION, true);
+}
+
 void audio_play_dit(AudioEngine* audio) {
     audio_play_tone(audio, MORSE_FREQ, DIT_DURATION);
 }
@@ -251,9 +265,27 @@ void audio_play_click(AudioEngine* audio) {
 }
 
 void audio_set_enabled(AudioEngine* audio, bool enabled) {
-    if (audio) audio->enabled = enabled;
+    if (!audio) return;
+    SDL_AtomicLock(&audio->lock);
+    audio->enabled = enabled;
+    if (!enabled) {
+        memset(audio->voices, 0, sizeof(audio->voices));
+        audio->dc_x_prev = audio->dc_y_prev = 0;
+    }
+    SDL_AtomicUnlock(&audio->lock);
 }
 
 bool audio_is_enabled(const AudioEngine* audio) {
     return audio ? audio->enabled : false;
+}
+
+void audio_set_insertion_only(AudioEngine* audio, bool insertion_only) {
+    if (!audio) return;
+    SDL_AtomicLock(&audio->lock);
+    if (audio->insertion_only != insertion_only) {
+        audio->insertion_only = insertion_only;
+        memset(audio->voices, 0, sizeof(audio->voices));
+        audio->dc_x_prev = audio->dc_y_prev = 0;
+    }
+    SDL_AtomicUnlock(&audio->lock);
 }

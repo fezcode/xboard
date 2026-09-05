@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <SDL.h>
 
-#define XBOARD_VERSION "2.0.0"
+#define XBOARD_VERSION "2.0.2"
 #include "text_buffer.h"
 
 typedef enum {

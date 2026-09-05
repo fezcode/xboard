@@ -15,6 +15,8 @@ void audio_play_tone(AudioEngine* audio, float freq, float duration);
 void audio_play_dit(AudioEngine* audio);
 void audio_play_dah(AudioEngine* audio);
 void audio_play_click(AudioEngine* audio);
+void audio_play_insert_click(AudioEngine* audio);
+void audio_set_insertion_only(AudioEngine* audio, bool insertion_only);
 
 void audio_set_enabled(AudioEngine* audio, bool enabled);
 bool audio_is_enabled(const AudioEngine* audio);

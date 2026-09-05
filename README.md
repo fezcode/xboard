@@ -31,7 +31,7 @@ The executable is `build-studio/xboard.exe`. The build script resolves paths fro
 
 **Keyboard:** the left stick moves the red L selector; the right stick moves the blue R selector. Press A to activate the selector moved most recently. The D-pad moves the active selector. Fresh stick gestures take priority over repeats; exact simultaneous movements keep the previous active selector. Click keys with the mouse without moving either selector. Shift and symbols expose alternate characters.
 
-**Dual dial:** choose one of eight groups with the left stick, then choose a character with the right stick. Flick or press A to type. Both dials support clicking.
+**Dual dial:** choose one of eight groups with the left stick, then choose a character with the right stick. Flick the right stick to type once, then return it to center to re-arm. A also types the selected character. Left-stick group selection and gentle right-stick previews are silent. Both dials support clicking. In dual-dial mode, sound plays only after text is successfully inserted; navigation, deletion and other controls stay silent.
 
 **Morse:** left stick for a dot, right stick for a dash. Press A to commit or wait 0.75 seconds. B removes an unfinished symbol first. Click either pad or an alphabet entry. Audio uses an 820 Hz tone with 75 ms dots and 225 ms dashes.
 

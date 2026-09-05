@@ -107,10 +107,7 @@ static void get_dial_layout(AppState* state, int* out_cy, int* out_left_cx, int*
 void mode_dial_update(AppState* state, float dt) {
     DialModeState* d = &state->dial;
 
-    if (d->flick_cooldown > 0.0f) {
-        d->flick_cooldown -= dt;
-        if (d->flick_cooldown < 0.0f) d->flick_cooldown = 0.0f;
-    }
+    if (d->flick_cooldown > 0.0f) d->flick_cooldown = fmaxf(0.0f, d->flick_cooldown - dt);
 
     /* Track left stick sector */
     int new_sector = get_sector_from_stick(state->ctrl.lx, state->ctrl.ly, state->ctrl.l_mag);
@@ -120,32 +117,30 @@ void mode_dial_update(AppState* state, float dt) {
 
     /* Track right stick pick */
     int pick = get_pick_from_stick(state->ctrl.rx, state->ctrl.ry, state->ctrl.r_mag);
-    d->active_pick = pick;
+    if (pick >= 0) d->active_pick = pick;
 
-    /* Flick trigger: when right stick exceeds 0.60 threshold */
-    if (state->ctrl.r_mag > 0.60f && d->active_sector >= 0 && pick >= 0) {
-        if (!d->was_picked && d->flick_cooldown <= 0.0f) {
-            const char* const* set = state->symbols_active ? SECTORS_SYMBOLS :
-                                     (state->shift_active ? SECTORS_LETTERS_UPPER : SECTORS_LETTERS_LOWER);
-            char ch = set[d->active_sector][pick];
-            app_insert_char(state, ch);
-            audio_play_click((AudioEngine*)state->audio);
-            controller_rumble(0.20f, 0.25f, 40);
-            d->was_picked = true;
-            d->flick_cooldown = 0.28f; /* debounce flick */
-        }
-    } else if (state->ctrl.r_mag < 0.35f) {
-        d->was_picked = false;
+    /* A deliberate right-stick flick commits once. Return to neutral to
+     * re-arm; selecting a group or previewing below threshold stays silent. */
+    bool flick_committed = false;
+    if (state->ctrl.r_mag < 0.35f) d->was_picked = false;
+    if (state->ctrl.r_mag > 0.60f && d->active_sector >= 0 && pick >= 0 &&
+        !d->was_picked && d->flick_cooldown <= 0.0f) {
+        const char* const* set = state->symbols_active ? SECTORS_SYMBOLS :
+                                 (state->shift_active ? SECTORS_LETTERS_UPPER : SECTORS_LETTERS_LOWER);
+        app_insert_char(state, set[d->active_sector][pick]);
+        controller_rumble(0.20f, 0.25f, 40);
+        d->was_picked = true;
+        d->flick_cooldown = 0.28f;
+        flick_committed = true;
     }
 
     /* Button A: commit currently highlighted letter */
-    if (state->ctrl.buttons_pressed & BTN_A) {
+    if ((state->ctrl.buttons_pressed & BTN_A) && !flick_committed) {
         if (d->active_sector >= 0 && d->active_pick >= 0) {
             const char* const* set = state->symbols_active ? SECTORS_SYMBOLS :
                                      (state->shift_active ? SECTORS_LETTERS_UPPER : SECTORS_LETTERS_LOWER);
             char ch = set[d->active_sector][d->active_pick];
             app_insert_char(state, ch);
-            audio_play_click((AudioEngine*)state->audio);
             controller_rumble(0.20f, 0.25f, 40);
         }
     }
@@ -163,7 +158,6 @@ void mode_dial_update(AppState* state, float dt) {
         if (m_sec >= 0) {
             if (state->mouse.left_clicked) {
                 d->active_sector = m_sec;
-                audio_play_tone((AudioEngine*)state->audio, 650.0f, 0.010f);
             }
         }
     }
@@ -180,7 +174,6 @@ void mode_dial_update(AppState* state, float dt) {
                                          (state->shift_active ? SECTORS_LETTERS_UPPER : SECTORS_LETTERS_LOWER);
                 char ch = set[d->active_sector][d->active_pick];
                 app_insert_char(state, ch);
-                audio_play_click((AudioEngine*)state->audio);
                 controller_rumble(0.20f, 0.25f, 40);
             }
         } else {
@@ -193,7 +186,6 @@ void mode_dial_update(AppState* state, float dt) {
                                                  (state->shift_active ? SECTORS_LETTERS_UPPER : SECTORS_LETTERS_LOWER);
                         char ch = set[d->active_sector][m_pick];
                         app_insert_char(state, ch);
-                        audio_play_click((AudioEngine*)state->audio);
                         controller_rumble(0.20f, 0.25f, 40);
                     }
                 }

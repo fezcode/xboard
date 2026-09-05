@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_Window* window = SDL_CreateWindow(
-        "xboard - Xbox Controller Virtual Keyboard",
+        "xboard 2.0.2 - Flick Typing",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         1200, 900,
         ((argc > 1) ? SDL_WINDOW_HIDDEN : SDL_WINDOW_SHOWN) | SDL_WINDOW_RESIZABLE
@@ -258,6 +258,8 @@ int main(int argc, char* argv[]) {
         /* Update window size */
         SDL_GetWindowSize(window, &state.win_w, &state.win_h);
 
+        audio_set_insertion_only(audio, state.mode == MODE_DIAL);
+
         /* Handle SDL Events */
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
@@ -341,6 +343,7 @@ int main(int argc, char* argv[]) {
         controller_update(&state, dt);
 
         shell_update(&state);
+        audio_set_insertion_only(audio, state.mode == MODE_DIAL);
         bool mode_input_blocked = shell_controller_update(&state, dt);
         if (state.help_open) {
             state.ctrl.buttons_pressed = state.ctrl.buttons_held = 0;
@@ -353,14 +356,14 @@ int main(int argc, char* argv[]) {
             state.mode = (state.mode == 0) ? (MODE_COUNT - 1) : (state.mode - 1);
             static const char* m_names[] = { "Mode: Dual Dial", "Mode: Virtual Grid", "Mode: Morse Code" };
             app_set_toast(&state, m_names[state.mode], 2.0f);
-            audio_play_click(audio);
+            if (state.mode != MODE_DIAL) audio_play_click(audio);
             controller_rumble(0.15f, 0.25f, 40);
         }
         if (state.ctrl.buttons_pressed & BTN_RBUMPER) {
             state.mode = (state.mode + 1) % MODE_COUNT;
             static const char* m_names[] = { "Mode: Dual Dial", "Mode: Virtual Grid", "Mode: Morse Code" };
             app_set_toast(&state, m_names[state.mode], 2.0f);
-            audio_play_click(audio);
+            if (state.mode != MODE_DIAL) audio_play_click(audio);
             controller_rumble(0.15f, 0.25f, 40);
         }
 
@@ -368,7 +371,7 @@ int main(int argc, char* argv[]) {
         if (state.ctrl.buttons_pressed & BTN_BACK) {
             app_toggle_direct(&state);
             app_set_toast(&state, state.direct_send_input ? "Direct SendInput: ON" : "Direct SendInput: OFF", 2.0f);
-            audio_play_click(audio);
+            if (state.mode != MODE_DIAL) audio_play_click(audio);
             controller_rumble(0.30f, 0.30f, 60);
         }
 
@@ -482,6 +485,8 @@ int main(int argc, char* argv[]) {
             state.dial.active_pick = -1;
             previous_mode = state.mode;
         }
+
+        audio_set_insertion_only(audio, state.mode == MODE_DIAL);
 
         /* Mode-specific updates */
         if (!state.help_open && !mode_input_blocked) switch (state.mode) {

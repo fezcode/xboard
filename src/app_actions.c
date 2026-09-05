@@ -11,7 +11,8 @@ void app_set_toast(AppState* s, const char* msg, float duration) {
     snprintf(s->toast, sizeof(s->toast), "%s", msg); s->toast_timer = duration;
 }
 static void feedback(AppState* s) {
-    audio_play_click(s->audio); controller_rumble(.12f, .18f, 30);
+    if (s->mode != MODE_DIAL) audio_play_click(s->audio);
+    controller_rumble(.12f, .18f, 30);
 }
 void app_copy(AppState* s) {
     app_set_toast(s, copy_to_clipboard(s->editor.current.text) ? "Copied to clipboard" : "Clipboard unavailable. Try again.", 2);
@@ -19,6 +20,8 @@ void app_copy(AppState* s) {
 void app_insert_string(AppState* s, const char* text) {
     if (!text_insert(&s->editor, text)) { app_set_toast(s, "Composer full. Copy or clear your text first.", 2); return; }
     if (s->direct_send_input) send_input_string(text);
+    /* Dial mode is silent unless text was actually inserted. */
+    if (s->mode == MODE_DIAL && text && *text) audio_play_insert_click(s->audio);
 }
 void app_paste(AppState* s) {
     char buf[MAX_TEXT_LEN];
