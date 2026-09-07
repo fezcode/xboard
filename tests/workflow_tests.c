@@ -1,5 +1,6 @@
 #include "app_state.h"
 #include "app_shell.h"
+#include "phrases.h"
 #include "ui_draw.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,6 +70,46 @@ int main(int argc,char**argv) {
     s.ctrl.buttons_held=s.ctrl.buttons_pressed=BTN_LSTICK; shell_controller_update(&s,.016f);
     s.ctrl.buttons_held=s.ctrl.buttons_pressed=0; shell_controller_update(&s,.016f);
     CHECK(s.caps_lock && !s.symbols_active);
+
+    /* Configured quick phrases drive the row layout, the hit test and A insertion. */
+    memset(&s,0,sizeof(s)); s.win_w=1200; s.win_h=900; s.mode=MODE_GRID;
+    CHECK(phrase_count(&s)==5); /* no configuration means the built-in set */
+    CHECK(strcmp(phrase_text(&s,0),"Hello! ")==0);
+    CHECK(phrase_append(&s,"gg "));
+    CHECK(phrase_append(&s,"be right back "));
+    CHECK(!phrase_append(&s,"")); /* blank entries are skipped */
+    CHECK(phrase_count(&s)==2);
+    int px,pw,qx,qw;
+    shell_phrase_rect(&s,0,&px,&pw); shell_phrase_rect(&s,1,&qx,&qw);
+    CHECK(px+pw<qx && qx+qw<=s.win_w-28); /* no overlap, and the row stays on screen */
+    click(qx+qw/2,s.win_h-124+17); CHECK(strcmp(s.editor.current.text,"be right back ")==0);
+    click(px+pw/2,s.win_h-124+17); CHECK(strcmp(s.editor.current.text,"be right back gg ")==0);
+    /* A stale index from a longer list must not read past the configured phrases. */
+    s.phrases_focused=true; s.phrase_index=4; s.ctrl.buttons_pressed=BTN_A;
+    CHECK(shell_controller_update(&s,.016f));
+    CHECK(strcmp(s.editor.current.text,"be right back gg be right back ")==0);
+
+    /* Overlong phrases truncate to a slot without stranding a partial code point. */
+    memset(&s,0,sizeof(s)); s.win_w=1200; s.win_h=900;
+    char overlong[MAX_PHRASE_LEN*2];
+    memset(overlong,'w',sizeof(overlong)-1); overlong[sizeof(overlong)-1]='\0';
+    CHECK(phrase_append(&s,overlong));
+    CHECK((int)strlen(phrase_text(&s,0))==MAX_PHRASE_LEN-1);
+    /* 37 ASCII bytes then a three byte code point: only two bytes of it fit. */
+    char clipped[64];
+    memset(clipped,'w',37); clipped[37]='\0'; strcat(clipped,"\xe2\x82\xac");
+    CHECK(phrase_append(&s,clipped));
+    CHECK((int)strlen(phrase_text(&s,1))==37); /* the split euro sign is dropped */
+    /* A code point that fits exactly is kept. */
+    char fits[64];
+    memset(fits,'w',36); fits[36]='\0'; strcat(fits,"\xe2\x82\xac");
+    CHECK(phrase_append(&s,fits));
+    CHECK(strcmp(phrase_text(&s,2),fits)==0);
+    /* The list has a hard ceiling. */
+    while (phrase_count(&s) < MAX_PHRASES) CHECK(phrase_append(&s,"x"));
+    CHECK(!phrase_append(&s,"overflow"));
+    CHECK(phrase_count(&s)==MAX_PHRASES);
+
     puts("Composer shortcuts, toolbar, phrases, help, grid navigation and Morse commit passed.");
     return 0;
 }

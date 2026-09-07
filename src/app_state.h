@@ -5,7 +5,12 @@
 #include <stdint.h>
 #include <SDL.h>
 
-#define XBOARD_VERSION "2.0.2"
+#define XBOARD_VERSION "2.0.3"
+
+/* Smallest window the shell layout stays readable in; also the compact capture size. */
+#define XBOARD_MIN_WIN_W 1100
+#define XBOARD_MIN_WIN_H 860
+
 #include "text_buffer.h"
 
 typedef enum {
@@ -94,6 +99,15 @@ typedef struct {
     float dah_flick_cooldown;
 } MorseModeState;
 
+/* Quick phrases. A count of zero means the built-in set is in use, so a
+ * zero-initialized AppState still behaves like a fresh install. */
+#define MAX_PHRASES 8
+#define MAX_PHRASE_LEN 40
+typedef struct {
+    char items[MAX_PHRASES][MAX_PHRASE_LEN];
+    int count;
+} QuickPhrases;
+
 typedef struct {
     int x;
     int y;
@@ -120,6 +134,7 @@ typedef struct AppState {
     /* Text buffer */
     TextBuffer editor;
     bool help_open;
+    QuickPhrases phrases;
     bool phrases_focused;
     int phrase_index;
     int phrase_direction;
@@ -142,6 +157,10 @@ typedef struct AppState {
     bool win_active;          /* Windows key modifier active (L3 held, Win button, or Win lock) */
     bool win_locked;          /* Windows key toggle lock via mouse/hotkey */
     int theme_index;          /* Active visual theme */
+
+    /* Last known good window rectangle, restored on the next launch. */
+    bool has_saved_window;
+    int saved_win_x, saved_win_y, saved_win_w, saved_win_h;
 
     /* Toast notification */
     char toast[128];

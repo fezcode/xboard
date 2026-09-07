@@ -6,6 +6,7 @@
 
 #include "app_state.h"
 #include "audio.h"
+#include "cli.h"
 #include "controller.h"
 #include "font.h"
 #include "morse.h"
@@ -25,6 +26,21 @@ static LRESULT CALLBACK OskWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         return MA_NOACTIVATE;
     }
     return CallWindowProc(g_old_wndproc, hwnd, uMsg, wParam, lParam);
+}
+
+/* SDL2main links the application as a GUI-subsystem binary, so it starts with no
+ * console of its own and --help would write into the void. Borrow the console of
+ * whichever shell launched us, leaving any stream the user already redirected to
+ * a pipe or file alone. */
+static void attach_parent_console(void) {
+    if (!AttachConsole(ATTACH_PARENT_PROCESS)) return;
+    const DWORD handles[] = { STD_OUTPUT_HANDLE, STD_ERROR_HANDLE };
+    FILE* streams[] = { stdout, stderr };
+    for (int i = 0; i < 2; ++i) {
+        HANDLE h = GetStdHandle(handles[i]);
+        if (h && h != INVALID_HANDLE_VALUE && GetFileType(h) != FILE_TYPE_UNKNOWN) continue;
+        freopen("CONOUT$", "w", streams[i]);
+    }
 }
 
 static void setup_win32_osk(SDL_Window* window) {
@@ -62,6 +78,22 @@ void mode_morse_update(AppState* state, float dt);
 void mode_morse_render(AppState* state);
 
 int main(int argc, char* argv[]) {
+    /* Resolve the command line before touching SDL so --help and --version stay
+     * cheap, and so an unusable argument reports itself instead of opening a
+     * window nobody can see. */
+    CliOptions opts;
+    bool parsed = cli_parse(argc, argv, &opts);
+#ifdef _WIN32
+    if (!parsed || opts.help || opts.version || opts.screenshot) attach_parent_console();
+#endif
+    if (!parsed) {
+        fprintf(stderr, "xboard: %s\n\n", opts.message);
+        cli_print_usage(stderr);
+        return 2;
+    }
+    if (opts.help) { cli_print_usage(stdout); return 0; }
+    if (opts.version) { printf("xboard %s\n", XBOARD_VERSION); return 0; }
+
 #ifdef _WIN32
     /* Set Windows Per-Monitor V2 DPI Awareness before any windows are created
      * so Windows DWM does not stretch/blur our UI on High-DPI displays (125%/150%) */
@@ -101,10 +133,10 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_Window* window = SDL_CreateWindow(
-        "xboard 2.0.2 - Flick Typing",
+        "xboard " XBOARD_VERSION " - Controller Keyboard",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         1200, 900,
-        ((argc > 1) ? SDL_WINDOW_HIDDEN : SDL_WINDOW_SHOWN) | SDL_WINDOW_RESIZABLE
+        (opts.screenshot ? SDL_WINDOW_HIDDEN : SDL_WINDOW_SHOWN) | SDL_WINDOW_RESIZABLE
     );
 
     if (!window) {
@@ -114,7 +146,7 @@ int main(int argc, char* argv[]) {
     }
 
 #ifdef _WIN32
-    if (argc == 1) setup_win32_osk(window);
+    if (!opts.screenshot) setup_win32_osk(window);
 #endif
 
     SDL_Renderer* renderer = SDL_CreateRenderer(
@@ -131,7 +163,7 @@ int main(int argc, char* argv[]) {
         if (renderer) SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window); SDL_Quit(); return 1;
     }
-    SDL_SetWindowMinimumSize(window, 1100, 860);
+    SDL_SetWindowMinimumSize(window, XBOARD_MIN_WIN_W, XBOARD_MIN_WIN_H);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
     AppState state;
@@ -151,12 +183,12 @@ int main(int argc, char* argv[]) {
     state.dial.active_sector = 0;
     state.dial.active_pick = -1;
 
-    if (argc == 1) app_load_preferences(&state);
+    if (!opts.screenshot) app_load_preferences(&state);
     audio_set_enabled(audio, state.sound_enabled);
 
-    if (argc > 1 && strcmp(argv[1], "--screenshot") == 0) {
-        if (argc > 2 && strcmp(argv[2], "--compact") == 0) {
-            state.win_w = 1100; state.win_h = 860;
+    if (opts.screenshot) {
+        if (opts.compact) {
+            state.win_w = XBOARD_MIN_WIN_W; state.win_h = XBOARD_MIN_WIN_H;
             SDL_SetWindowSize(window, state.win_w, state.win_h);
         }
         const char* filenames[3] = { "screenshot_dial.bmp", "screenshot_grid.bmp", "screenshot_morse.bmp" };
@@ -350,134 +382,7 @@ int main(int argc, char* argv[]) {
             state.ctrl.lt = state.ctrl.rt = 0;
         }
 
-        /* Global Controller Shortcuts */
-        /* LB / RB: switch modes */
-        if (state.ctrl.buttons_pressed & BTN_LBUMPER) {
-            state.mode = (state.mode == 0) ? (MODE_COUNT - 1) : (state.mode - 1);
-            static const char* m_names[] = { "Mode: Dual Dial", "Mode: Virtual Grid", "Mode: Morse Code" };
-            app_set_toast(&state, m_names[state.mode], 2.0f);
-            if (state.mode != MODE_DIAL) audio_play_click(audio);
-            controller_rumble(0.15f, 0.25f, 40);
-        }
-        if (state.ctrl.buttons_pressed & BTN_RBUMPER) {
-            state.mode = (state.mode + 1) % MODE_COUNT;
-            static const char* m_names[] = { "Mode: Dual Dial", "Mode: Virtual Grid", "Mode: Morse Code" };
-            app_set_toast(&state, m_names[state.mode], 2.0f);
-            if (state.mode != MODE_DIAL) audio_play_click(audio);
-            controller_rumble(0.15f, 0.25f, 40);
-        }
-
-        /* Back / View: Toggle Direct SendInput */
-        if (state.ctrl.buttons_pressed & BTN_BACK) {
-            app_toggle_direct(&state);
-            app_set_toast(&state, state.direct_send_input ? "Direct SendInput: ON" : "Direct SendInput: OFF", 2.0f);
-            if (state.mode != MODE_DIAL) audio_play_click(audio);
-            controller_rumble(0.30f, 0.30f, 60);
-        }
-
-        /* Start / Menu: Copy to Clipboard */
-        if (state.ctrl.buttons_pressed & BTN_START) {
-            app_copy(&state);
-        }
-
-        /* LT acts like Shift */
-        bool lt_held = (state.ctrl.lt > 0.18f);
-        state.shift_active = state.caps_lock ? !lt_held : lt_held;
-
-        /* RT acts like Ctrl */
-        state.ctrl_active = state.ctrl_locked || (state.ctrl.rt > 0.18f);
-
-        /* Guide opens Start; L3 is reserved for Caps Lock. */
-        state.win_active = state.win_locked;
-
-        if (state.ctrl.buttons_pressed & BTN_GUIDE) {
-            app_win_key(&state);
-        }
-
-        /* D-pad Cursor Movement:
-         * Navigates cursor in external apps (Left, Right, Up, Down arrow keys)
-         * and moves cursor in text buffer. Supports smooth hold-to-repeat.
-         */
-        int dpad_dir = 0;
-        if (state.ctrl.buttons_held & BTN_DPAD_LEFT)       dpad_dir = 1;
-        else if (state.ctrl.buttons_held & BTN_DPAD_RIGHT) dpad_dir = 2;
-        else if (state.ctrl.buttons_held & BTN_DPAD_UP)    dpad_dir = 3;
-        else if (state.ctrl.buttons_held & BTN_DPAD_DOWN)  dpad_dir = 4;
-
-        if (state.mode == MODE_GRID || mode_input_blocked) dpad_dir = 0;
-        if (dpad_dir != 0) {
-            if (dpad_dir != state.dpad_last_dir) {
-                state.dpad_last_dir = dpad_dir;
-                state.dpad_repeat_timer = 0.25f; /* 250ms initial delay */
-                if (dpad_dir == 1)      app_cursor_left(&state);
-                else if (dpad_dir == 2) app_cursor_right(&state);
-                else if (dpad_dir == 3) app_cursor_up(&state);
-                else if (dpad_dir == 4) app_cursor_down(&state);
-            } else {
-                state.dpad_repeat_timer -= dt;
-                if (state.dpad_repeat_timer <= 0.0f) {
-                    if (dpad_dir == 1)      app_cursor_left(&state);
-                    else if (dpad_dir == 2) app_cursor_right(&state);
-                    else if (dpad_dir == 3) app_cursor_up(&state);
-                    else if (dpad_dir == 4) app_cursor_down(&state);
-                    state.dpad_repeat_timer = 0.05f; /* 50ms rapid repeat */
-                }
-            }
-            /* Consume D-pad pressed flags so modes don't double process */
-            state.ctrl.buttons_pressed &= ~(BTN_DPAD_LEFT | BTN_DPAD_RIGHT | BTN_DPAD_UP | BTN_DPAD_DOWN);
-        } else {
-            state.dpad_last_dir = 0;
-            state.dpad_repeat_timer = 0.0f;
-        }
-
-        /* Universal Space */
-        if (state.ctrl.buttons_pressed & BTN_X) {
-            app_space(&state);
-        }
-
-        /* Universal Backspace:
-         * Press once: delete exactly 1 character (or 1 in-flight Morse symbol).
-         * Hold: smooth auto-repeat delete after initial delay.
-         */
-        bool b_down = (state.ctrl.buttons_held & BTN_B);
-        if (state.ctrl.buttons_pressed & BTN_B) {
-            if (state.mode == MODE_MORSE && state.morse.seq_len > 0) {
-                state.morse.sequence[--state.morse.seq_len] = '\0';
-                state.morse.candidate_char = morse_decode(state.morse.sequence);
-                state.morse.silence_timer = 0.0f;
-                controller_rumble(0.20f, 0.0f, 35);
-            } else {
-                if (state.ctrl_active) {
-                    app_delete_word(&state);
-                } else {
-                    app_backspace(&state);
-                }
-            }
-            state.b_repeat_timer = 0.40f; /* 400ms initial hold delay */
-        } else if (b_down) {
-            state.b_repeat_timer -= dt;
-            if (state.b_repeat_timer <= 0.0f) {
-                if (state.mode == MODE_MORSE && state.morse.seq_len > 0) {
-                    state.morse.sequence[--state.morse.seq_len] = '\0';
-                    state.morse.candidate_char = morse_decode(state.morse.sequence);
-                    state.morse.silence_timer = 0.0f;
-                } else {
-                    if (state.ctrl_active) {
-                        app_delete_word(&state);
-                    } else {
-                        app_backspace(&state);
-                    }
-                }
-                state.b_repeat_timer = 0.06f; /* Rapid repeat every 60ms */
-            }
-        } else {
-            state.b_repeat_timer = 0.0f;
-        }
-
-        /* Universal Enter */
-        if (state.ctrl.buttons_pressed & BTN_Y) {
-            app_newline(&state);
-        }
+        shell_global_shortcuts(&state, dt, mode_input_blocked);
 
         if (state.mode != previous_mode) {
             memset(&state.morse, 0, sizeof(state.morse));
@@ -485,8 +390,6 @@ int main(int argc, char* argv[]) {
             state.dial.active_pick = -1;
             previous_mode = state.mode;
         }
-
-        audio_set_insertion_only(audio, state.mode == MODE_DIAL);
 
         /* Mode-specific updates */
         if (!state.help_open && !mode_input_blocked) switch (state.mode) {

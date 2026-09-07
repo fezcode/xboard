@@ -1,4 +1,5 @@
 #include "app_state.h"
+#include "phrases.h"
 #include "audio.h"
 #include "controller.h"
 #include "send_input.h"
@@ -91,17 +92,62 @@ static FILE* preferences(const char* mode) {
     char path[1024]; snprintf(path, sizeof(path), "%spreferences.ini", dir); SDL_free(dir);
     return fopen(path, mode);
 }
+/* A restored rectangle is only usable if enough of it lands on a connected
+ * display; otherwise an unplugged monitor would strand the window offscreen. */
+static bool window_reachable(int x, int y, int w, int h) {
+    SDL_Rect want = { x, y, w, h };
+    for (int i = 0, n = SDL_GetNumVideoDisplays(); i < n; ++i) {
+        SDL_Rect bounds, overlap;
+        if (SDL_GetDisplayBounds(i, &bounds) != 0) continue;
+        if (SDL_IntersectRect(&bounds, &want, &overlap) && overlap.w >= 200 && overlap.h >= 80) return true;
+    }
+    return false;
+}
 void app_load_preferences(AppState* s) {
     FILE* f = preferences("r"); if (!f) return;
-    char line[128]; int value;
+    char line[256]; int value, x, y, w, h;
     while (fgets(line, sizeof(line), f)) {
         if (sscanf(line, "theme=%d", &value) == 1 && value >= 0 && value < THEME_COUNT) s->theme_index = value;
         if (sscanf(line, "mode=%d", &value) == 1 && value >= 0 && value < MODE_COUNT) s->mode = (AppMode)value;
         if (sscanf(line, "sound=%d", &value) == 1 && (value == 0 || value == 1)) s->sound_enabled = value != 0;
+        if (sscanf(line, "window=%d,%d,%d,%d", &x, &y, &w, &h) == 4 && w > 0 && h > 0 && w < 16384 && h < 16384) {
+            if (w < XBOARD_MIN_WIN_W) w = XBOARD_MIN_WIN_W;
+            if (h < XBOARD_MIN_WIN_H) h = XBOARD_MIN_WIN_H;
+            if (window_reachable(x, y, w, h)) {
+                s->has_saved_window = true;
+                s->saved_win_x = x; s->saved_win_y = y; s->saved_win_w = w; s->saved_win_h = h;
+            }
+        }
+        if (strncmp(line, "phrase=", 7) == 0) {
+            char* text = line + 7;
+            size_t n = strlen(text);
+            /* Strip only the line ending; trailing spaces are part of a phrase. */
+            while (n > 0 && (text[n - 1] == '\n' || text[n - 1] == '\r')) text[--n] = '\0';
+            phrase_append(s, text);
+        }
     }
     fclose(f); theme_set(s->theme_index);
+    if (s->has_saved_window && s->window) {
+        SDL_SetWindowSize(s->window, s->saved_win_w, s->saved_win_h);
+        SDL_SetWindowPosition(s->window, s->saved_win_x, s->saved_win_y);
+        s->win_w = s->saved_win_w; s->win_h = s->saved_win_h;
+    }
 }
 void app_save_preferences(AppState* s) {
+    /* Keep the last good rectangle when quitting maximized or minimized. */
+    if (s->window) {
+        Uint32 flags = SDL_GetWindowFlags(s->window);
+        if (!(flags & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_MINIMIZED))) {
+            SDL_GetWindowPosition(s->window, &s->saved_win_x, &s->saved_win_y);
+            SDL_GetWindowSize(s->window, &s->saved_win_w, &s->saved_win_h);
+            s->has_saved_window = true;
+        }
+    }
     FILE* f = preferences("w"); if (!f) { SDL_Log("Could not save preferences"); return; }
-    fprintf(f, "theme=%d\nmode=%d\nsound=%d\n", s->theme_index, s->mode, s->sound_enabled); fclose(f);
+    fprintf(f, "theme=%d\nmode=%d\nsound=%d\n", s->theme_index, s->mode, s->sound_enabled);
+    if (s->has_saved_window)
+        fprintf(f, "window=%d,%d,%d,%d\n", s->saved_win_x, s->saved_win_y, s->saved_win_w, s->saved_win_h);
+    /* Always write the phrases so a first run leaves a file that is obvious to edit. */
+    for (int i = 0; i < phrase_count(s); ++i) fprintf(f, "phrase=%s\n", phrase_text(s, i));
+    fclose(f);
 }

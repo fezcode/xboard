@@ -57,13 +57,30 @@ The composer displays the cursor's current line and scrolls horizontally to keep
 
 Local Ctrl+A selects all; the next insertion replaces it. Ctrl+C/V/X/Z/Y copy, paste, cut, undo and redo. Direct mode forwards controller Ctrl shortcuts to the destination app. The toolbar's Copy/Paste/Clear operate on the composer; Undo/Redo target the destination app when direct mode is enabled. The live output is a record of emitted text, not a synchronized view of the external document. External apps control their own undo history and may reject injected input, especially when elevated.
 
-Preferences are stored in `SDL_GetPrefPath("xboard", "xboard")/preferences.ini` on normal exit. Composer text and direct-output mode are never persisted. Quick phrases are built-in presets.
+Preferences are stored in `SDL_GetPrefPath("xboard", "xboard")/preferences.ini` on normal exit. Composer text and direct-output mode are never persisted.
+
+The file holds the theme, mode, sound toggle, window placement and your quick phrases:
+
+```ini
+theme=0
+mode=1
+sound=1
+window=320,140,1200,900
+phrase=Hello!
+phrase=Thank you.
+```
+
+Edit the `phrase=` lines to define your own, up to eight of 39 characters each. Trailing spaces are kept, so `phrase=Hello! ` inserts the space too. Blank entries are skipped, and removing every `phrase=` line restores the built-in five. The row resizes itself to whatever you configure and always stays inside the window. Changes are picked up on the next launch, and xboard rewrites the file on exit — so quit before editing, or your edits are overwritten.
+
+The window reopens where you left it. A saved rectangle is discarded if it no longer lands on a connected display, and quitting maximized or minimized keeps the previous placement rather than storing one you cannot use.
 
 ## Development and verification
 
 - `src/text_buffer.*`: platform-independent editor and bounded snapshot history.
 - `src/app_actions.c`: application commands, clipboard integration and preferences.
-- `src/app_shell.*`: interface rendering and shell hit testing.
+- `src/app_shell.*`: interface rendering, shell hit testing and mode-independent controller shortcuts.
+- `src/cli.*`: command line parsing, independent of SDL and application state.
+- `src/phrases.*`: quick-phrase contents, shared by the shell and the preferences file.
 - `src/mode_*.c`: mode-specific input and rendering.
 - `src/font.c`, `ui_draw.c`, `audio.c`, `controller.c`, `send_input.c`: platform and rendering services.
 
@@ -75,6 +92,27 @@ Preferences are stored in `SDL_GetPrefPath("xboard", "xboard")/preferences.ini` 
 
 Screenshot mode creates six BMPs in the working directory, runs hidden, does not load/save preferences and does not inject keystrokes. Compact captures use the 1100 x 860 minimum window size; default captures are 1200 x 900.
 
-Tests cover insertion/deletion, UTF-8 boundaries, capacity, undo/redo eviction, multiline navigation, Morse decoding, toolbar actions, selection replacement, quick phrases, help, grid navigation and Morse auto-commit. Physical Xbox rumble/hotplug and cross-application SendInput require manual hardware/application testing.
+`--help` and `--version` print and exit. Flags may appear in any order, and an unrecognized argument reports itself and exits with status 2 instead of starting the application. Because SDL2main links xboard as a GUI-subsystem binary, it borrows the calling shell's console for this output and leaves redirected streams alone.
 
-The Windows executable embeds `assets/xboard.ico` with seven sizes (16�256 px). Regenerate it from the PNG with `tools/build-icon.ps1`.
+`.github/workflows/build.yml` configures, builds and runs every suite on `windows-latest` under the same MSYS2/MinGW toolchain, then checks that the binary reports the version in `src/app_state.h`.
+
+Tests cover insertion/deletion, UTF-8 boundaries, capacity, undo/redo eviction, multiline navigation, Morse decoding, toolbar actions, selection replacement, quick phrases (configured contents, row layout and hit testing), help, grid navigation, Morse auto-commit and command line parsing. Physical Xbox rumble/hotplug and cross-application SendInput require manual hardware/application testing.
+
+The Windows executable embeds `assets/xboard.ico` with seven sizes (16–256 px). Regenerate it from the PNG with `tools/build-icon.ps1`.
+
+## Forge installer
+
+```powershell
+.\publish.ps1          # Test and stage a standalone native app in Publish/
+.\build-installer.ps1  # Publish, validate, build and inspect the installer
+```
+
+Adapted from Atelier, using `../Forge/build/forge.exe` and `uninstall.exe`. Build the sibling toolchain with `gobake build` in Forge if needed. Override the toolkit path with `-Forge <path-to-forge.exe>`.
+
+The mica wizard installs to Program Files/xboard, offers Desktop and Start Menu shortcuts, registers an uninstaller, and can launch xboard when finished. Settings live in `%APPDATA%/xboard/xboard`; uninstall preserves them unless the user selects settings removal. No Atelier license or file associations are copied into this installer.
+
+Packaging builds/tests in `build-release/`, follows DLL imports recursively with the configured MinGW `objdump`, and bundles runtime DLLs alongside the executable. Installed MSYS2 package metadata supplies third-party notices and a dependency inventory. The packaged app does not need MSYS2 on PATH. XInput uses the Windows-provided 9.1.0 API, avoiding the legacy DirectX XInput 1.3 dependency.
+
+Keep `XBOARD_VERSION` in `src/app_state.h` and `[app] version` in `forge.toml` synchronized. The window title and Windows executable metadata derive from the header. A mismatch stops packaging before a build.
+
+Output: `dist/xboard-Setup-<version>.exe` and a `.sha256` sidecar. Forge logs are retained under `build-release/logs/`. The pipeline validates and inspects the installer and smoke-tests the staged app with hidden screenshots and a minimal Windows PATH. Full install/upgrade/uninstall and physical controller checks remain manual. Building an installer does not commit, tag or publish a GitHub release; see `AGENTS.md` for the explicit RELEASE flow.

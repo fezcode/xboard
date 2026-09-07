@@ -1,3 +1,8 @@
 build*/
 *.log
 screenshot_*.bmp
+
+Publish/
+dist/
+.release-notes*.md
+*.stackdump

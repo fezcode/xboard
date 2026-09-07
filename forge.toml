@@ -1,0 +1,99 @@
+# xboard installer, adapted from Atelier. Keep version aligned with XBOARD_VERSION.
+
+[app]
+name    = "xboard"
+version = "2.0.3"
+id      = "com.fezcode.xboard"
+icon    = "assets/xboard.ico"
+
+[meta]
+publisher   = "Fezcode"
+homepage    = "https://github.com/fezcode/xboard"
+support_url = "https://github.com/fezcode/xboard/issues"
+comments    = "A native Windows controller keyboard with dual-stick, dial and Morse input."
+
+[ui]
+# mica = the Windows 11 look, so setup feels native rather than branded.
+theme        = "mica"
+window_title = "xboard ${app.version} Setup"
+
+[install]
+default_dir = "${PROGRAMFILES}/xboard"
+
+[uninstall]
+keep          = []
+settings_dirs = ["${APPDATA}/xboard/xboard"]   # offered as "Also remove my settings and data"
+
+# --- wizard -----------------------------------------------------------------
+
+[[steps]]
+type  = "welcome"
+title = "xboard ${app.version}"
+body  = "This will install xboard ${app.version} on your computer.\n\nType with an Xbox controller or mouse using a keyboard, dual dial, or Morse code.\n\nClick Next to continue."
+
+[[steps]]
+type  = "folder"
+title = "Select Folder"
+body  = "Choose where to install xboard ${app.version}."
+
+[[steps]]
+type  = "shortcuts"
+title = "Select Optional Tasks"
+body  = "Check the items you would like the installer to perform."
+
+[[steps]]
+type  = "install"
+title = "Installing..."
+body  = "Copying files to your system."
+
+[[steps]]
+type  = "finish"
+title = "Installation Complete"
+body  = "xboard is ready. Start in local compose mode, or enable Direct to apps to type into another window."
+
+[[steps.launches]]
+kind    = "app"
+target  = "${INSTALLDIR}/xboard.exe"
+label   = "Launch xboard"
+checked = true
+
+# --- payload ----------------------------------------------------------------
+
+# publish.ps1 stages the native executable, DLLs, documentation and notices.
+[[dirs]]
+src = "Publish"
+dst = "${INSTALLDIR}"
+
+# --- shortcuts --------------------------------------------------------------
+
+[[shortcuts]]
+target   = "${INSTALLDIR}/xboard.exe"
+location = "${DESKTOP}"
+name     = "xboard"
+icon     = "${INSTALLDIR}/xboard.exe"
+label    = "Create a desktop shortcut"
+optional = true
+default  = true
+
+[[shortcuts]]
+target   = "${INSTALLDIR}/xboard.exe"
+location = "${STARTMENU}/Fezcode"
+name     = "xboard"
+icon     = "${INSTALLDIR}/xboard.exe"
+label    = "Create a Start Menu entry"
+optional = true
+default  = true
+
+# --- registry ---------------------------------------------------------------
+
+[[registry]]
+hive  = "HKCU"
+key   = "Software\\Fezcode\\xboard"
+value = "InstallDir"
+data  = "${INSTALLDIR}"
+
+[[registry]]
+hive  = "HKCU"
+key   = "Software\\Fezcode\\xboard"
+value = "Version"
+data  = "${app.version}"

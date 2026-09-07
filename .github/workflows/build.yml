@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows / MinGW
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Matches the local MSYS2/MinGW toolchain the project is developed against.
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_ttf
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      # Every suite is headless: no audio device is opened and SDL video is never
+      # initialised, so these run unchanged on a runner.
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      # --version returns before SDL starts, so it doubles as a launch smoke test
+      # and catches XBOARD_VERSION drifting from what the binary reports.
+      - name: Check reported version
+        run: |
+          reported="$(./build/xboard.exe --version)"
+          expected="xboard $(sed -n 's/^#define XBOARD_VERSION "\(.*\)"/\1/p' src/app_state.h)"
+          echo "reported: $reported"
+          test "$reported" = "$expected"

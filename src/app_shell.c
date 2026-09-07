@@ -1,4 +1,7 @@
 #include "app_shell.h"
+#include "phrases.h"
+#include "controller.h"
+#include "morse.h"
 #include "ui_draw.h"
 #include "font.h"
 #include "audio.h"
@@ -11,7 +14,36 @@ static const char* descriptions[] = {
     "Left stick: red. Right stick: blue. A types the last moved selection.",
     "A little rhythm goes a long way. Short dots, long dashes."
 };
-static const char* phrases[] = {"Hello! ", "Thank you. ", "One moment, please. ", "Yes", "No"};
+/* Phrase row geometry. The row starts right of the QUICK PHRASES caption and
+ * always ends inside the window, however many phrases the user configured. */
+#define PHRASE_ROW_X 150
+#define PHRASE_ROW_GAP 10
+#define PHRASE_MIN_W 86
+#define PHRASE_MAX_W 250
+
+static int phrase_width(AppState* s, int index) {
+    int tw = 0;
+    font_measure_text(s->fonts, phrase_text(s, index), FONT_SIZE_SMALL, &tw, NULL);
+    /* Without a font manager, estimate from the text so layout stays deterministic. */
+    if (tw <= 0) tw = (int)strlen(phrase_text(s, index)) * 8;
+    int w = tw + 36;
+    if (w < PHRASE_MIN_W) w = PHRASE_MIN_W;
+    if (w > PHRASE_MAX_W) w = PHRASE_MAX_W;
+    return w;
+}
+void shell_phrase_rect(AppState* s, int index, int* out_x, int* out_w) {
+    int count = phrase_count(s), total = 0;
+    for (int i = 0; i < count; ++i) total += phrase_width(s, i);
+    int available = s->win_w - PHRASE_ROW_X - 28 - (count - 1) * PHRASE_ROW_GAP;
+    int x = PHRASE_ROW_X;
+    for (int i = 0; i < count; ++i) {
+        int w = phrase_width(s, i);
+        if (total > available && available > 0) w = w * available / total;
+        if (i == index) { *out_x = x; *out_w = w; return; }
+        x += w + PHRASE_ROW_GAP;
+    }
+    *out_x = x; *out_w = 0;
+}
 static bool hit(AppState* s, int x, int y, int w, int h) {
     return s->mouse.x >= x && s->mouse.x < x+w && s->mouse.y >= y && s->mouse.y < y+h;
 }
@@ -62,19 +94,159 @@ bool shell_controller_update(AppState* s, float dt) {
         else return true;
     }
     if (!s->phrases_focused) return false;
+    int count = phrase_count(s);
+    if (s->phrase_index >= count) s->phrase_index = count - 1;
     int direction = 0;
     if (s->ctrl.lx < -.45f || s->ctrl.rx < -.45f || (s->ctrl.buttons_held & BTN_DPAD_LEFT)) direction = -1;
     else if (s->ctrl.lx > .45f || s->ctrl.rx > .45f || (s->ctrl.buttons_held & BTN_DPAD_RIGHT)) direction = 1;
     if (direction) {
         s->phrase_repeat_timer -= dt;
         if (direction != s->phrase_direction || s->phrase_repeat_timer <= 0) {
-            s->phrase_index = (s->phrase_index + direction + 5) % 5;
+            s->phrase_index = (s->phrase_index + direction + count) % count;
             s->phrase_repeat_timer = direction != s->phrase_direction ? .32f : .12f;
         }
     }
     s->phrase_direction = direction;
-    if (s->ctrl.buttons_pressed & BTN_A) app_insert_string(s, phrases[s->phrase_index]);
+    if (s->ctrl.buttons_pressed & BTN_A) app_insert_string(s, phrase_text(s, s->phrase_index));
     return true;
+}
+
+/* Controller actions that behave the same in every mode.
+ *
+ * The dial audio policy is re-applied at the end rather than once per frame:
+ * LB / RB can change the mode midway through, and any click emitted above must
+ * still follow the policy of the mode it came from, which is what keeps dial
+ * mode silent outside successful insertion. */
+void shell_global_shortcuts(AppState* s, float dt, bool mode_input_blocked) {
+    static const char* mode_names[] = { "Mode: Dual Dial", "Mode: Virtual Grid", "Mode: Morse Code" };
+
+    /* LB / RB: switch modes */
+    if (s->ctrl.buttons_pressed & BTN_LBUMPER) {
+        s->mode = (s->mode == 0) ? (AppMode)(MODE_COUNT - 1) : (AppMode)(s->mode - 1);
+        app_set_toast(s, mode_names[s->mode], 2.0f);
+        if (s->mode != MODE_DIAL) audio_play_click(s->audio);
+        controller_rumble(0.15f, 0.25f, 40);
+    }
+    if (s->ctrl.buttons_pressed & BTN_RBUMPER) {
+        s->mode = (AppMode)((s->mode + 1) % MODE_COUNT);
+        app_set_toast(s, mode_names[s->mode], 2.0f);
+        if (s->mode != MODE_DIAL) audio_play_click(s->audio);
+        controller_rumble(0.15f, 0.25f, 40);
+    }
+
+    /* Back / View: Toggle Direct SendInput */
+    if (s->ctrl.buttons_pressed & BTN_BACK) {
+        app_toggle_direct(s);
+        app_set_toast(s, s->direct_send_input ? "Direct SendInput: ON" : "Direct SendInput: OFF", 2.0f);
+        if (s->mode != MODE_DIAL) audio_play_click(s->audio);
+        controller_rumble(0.30f, 0.30f, 60);
+    }
+
+    /* Start / Menu: Copy to Clipboard */
+    if (s->ctrl.buttons_pressed & BTN_START) {
+        app_copy(s);
+    }
+
+    /* LT acts like Shift */
+    bool lt_held = (s->ctrl.lt > 0.18f);
+    s->shift_active = s->caps_lock ? !lt_held : lt_held;
+
+    /* RT acts like Ctrl */
+    s->ctrl_active = s->ctrl_locked || (s->ctrl.rt > 0.18f);
+
+    /* Guide opens Start; L3 is reserved for Caps Lock. */
+    s->win_active = s->win_locked;
+
+    if (s->ctrl.buttons_pressed & BTN_GUIDE) {
+        app_win_key(s);
+    }
+
+    /* D-pad Cursor Movement:
+     * Navigates cursor in external apps (Left, Right, Up, Down arrow keys)
+     * and moves cursor in text buffer. Supports smooth hold-to-repeat.
+     */
+    int dpad_dir = 0;
+    if (s->ctrl.buttons_held & BTN_DPAD_LEFT)       dpad_dir = 1;
+    else if (s->ctrl.buttons_held & BTN_DPAD_RIGHT) dpad_dir = 2;
+    else if (s->ctrl.buttons_held & BTN_DPAD_UP)    dpad_dir = 3;
+    else if (s->ctrl.buttons_held & BTN_DPAD_DOWN)  dpad_dir = 4;
+
+    if (s->mode == MODE_GRID || mode_input_blocked) dpad_dir = 0;
+    if (dpad_dir != 0) {
+        if (dpad_dir != s->dpad_last_dir) {
+            s->dpad_last_dir = dpad_dir;
+            s->dpad_repeat_timer = 0.25f; /* 250ms initial delay */
+            if (dpad_dir == 1)      app_cursor_left(s);
+            else if (dpad_dir == 2) app_cursor_right(s);
+            else if (dpad_dir == 3) app_cursor_up(s);
+            else if (dpad_dir == 4) app_cursor_down(s);
+        } else {
+            s->dpad_repeat_timer -= dt;
+            if (s->dpad_repeat_timer <= 0.0f) {
+                if (dpad_dir == 1)      app_cursor_left(s);
+                else if (dpad_dir == 2) app_cursor_right(s);
+                else if (dpad_dir == 3) app_cursor_up(s);
+                else if (dpad_dir == 4) app_cursor_down(s);
+                s->dpad_repeat_timer = 0.05f; /* 50ms rapid repeat */
+            }
+        }
+        /* Consume D-pad pressed flags so modes don't double process */
+        s->ctrl.buttons_pressed &= ~(BTN_DPAD_LEFT | BTN_DPAD_RIGHT | BTN_DPAD_UP | BTN_DPAD_DOWN);
+    } else {
+        s->dpad_last_dir = 0;
+        s->dpad_repeat_timer = 0.0f;
+    }
+
+    /* Universal Space */
+    if (s->ctrl.buttons_pressed & BTN_X) {
+        app_space(s);
+    }
+
+    /* Universal Backspace:
+     * Press once: delete exactly 1 character (or 1 in-flight Morse symbol).
+     * Hold: smooth auto-repeat delete after initial delay.
+     */
+    bool b_down = (s->ctrl.buttons_held & BTN_B) != 0;
+    if (s->ctrl.buttons_pressed & BTN_B) {
+        if (s->mode == MODE_MORSE && s->morse.seq_len > 0) {
+            s->morse.sequence[--s->morse.seq_len] = '\0';
+            s->morse.candidate_char = morse_decode(s->morse.sequence);
+            s->morse.silence_timer = 0.0f;
+            controller_rumble(0.20f, 0.0f, 35);
+        } else {
+            if (s->ctrl_active) {
+                app_delete_word(s);
+            } else {
+                app_backspace(s);
+            }
+        }
+        s->b_repeat_timer = 0.40f; /* 400ms initial hold delay */
+    } else if (b_down) {
+        s->b_repeat_timer -= dt;
+        if (s->b_repeat_timer <= 0.0f) {
+            if (s->mode == MODE_MORSE && s->morse.seq_len > 0) {
+                s->morse.sequence[--s->morse.seq_len] = '\0';
+                s->morse.candidate_char = morse_decode(s->morse.sequence);
+                s->morse.silence_timer = 0.0f;
+            } else {
+                if (s->ctrl_active) {
+                    app_delete_word(s);
+                } else {
+                    app_backspace(s);
+                }
+            }
+            s->b_repeat_timer = 0.06f; /* Rapid repeat every 60ms */
+        }
+    } else {
+        s->b_repeat_timer = 0.0f;
+    }
+
+    /* Universal Enter */
+    if (s->ctrl.buttons_pressed & BTN_Y) {
+        app_newline(s);
+    }
+
+    audio_set_insertion_only(s->audio, s->mode == MODE_DIAL);
 }
 
 void shell_update(AppState* s) {
@@ -92,8 +264,10 @@ void shell_update(AppState* s) {
     if(hit(s,x+342,104,82,34)) app_copy(s);
     if(hit(s,w-202,170,76,34)) app_paste(s);
     if(hit(s,w-116,170,64,34)) app_clear(s);
-    int px=150;
-    for(int i=0;i<5;++i) { int bw=i==2?190:120; if(hit(s,px,h-124,bw,34)) app_insert_string(s,phrases[i]); px+=bw+10; }
+    for(int i=0;i<phrase_count(s);++i) {
+        int px,bw; shell_phrase_rect(s,i,&px,&bw);
+        if(hit(s,px,h-124,bw,34)) app_insert_string(s,phrase_text(s,i));
+    }
     int fx=28;
     if(hit(s,fx,h-65,98,34)) { s->caps_lock=!s->caps_lock; s->shift_active=s->caps_lock; }
     if(hit(s,fx+108,h-65,90,34)) { s->ctrl_locked=!s->ctrl_locked; s->ctrl_active=s->ctrl_locked; }
@@ -146,8 +320,10 @@ void shell_draw_footer(AppState* s) {
     int w=s->win_w,h=s->win_h;
     label(s,"QUICK PHRASES",28,h-107,FONT_SIZE_SMALL,COLOR_TEXT_MUTED);
     label(s,s->phrases_focused ? "PHRASES FOCUSED  /  A insert  /  L3 + R3 return" : "L3 + R3  Focus quick phrases",150,h-143,FONT_SIZE_SMALL,NEU_CYAN);
-    int x=150;
-    for(int i=0;i<5;++i) { int bw=i==2?190:120; button(s,phrases[i],x,h-124,bw,s->phrases_focused && s->phrase_index==i); x+=bw+10; }
+    for(int i=0;i<phrase_count(s);++i) {
+        int x,bw; shell_phrase_rect(s,i,&x,&bw);
+        button(s,phrase_text(s,i),x,h-124,bw,s->phrases_focused && s->phrase_index==i);
+    }
     ui_draw_thick_line(s->renderer,28,h-78,w-28,h-78,1,NEU_BORDER);
     button(s,"LT  Shift",28,h-65,98,s->shift_active);
     button(s,"RT  Ctrl",136,h-65,90,s->ctrl_active);
