@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400"
+     role="img" aria-label="xboard — a virtual keyboard for Xbox controllers on Windows">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0"   stop-color="#9db4ff"/>
+      <stop offset="0.55" stop-color="#a78bfa"/>
+      <stop offset="1"   stop-color="#f43f5e"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="28%" cy="52%" r="72%">
+      <stop offset="0" stop-color="#191c25"/>
+      <stop offset="1" stop-color="#0f1117"/>
+    </radialGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9db4ff" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#9db4ff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#222634"/>
+      <stop offset="1" stop-color="#191c25"/>
+    </linearGradient>
+    <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2f40"/>
+      <stop offset="1" stop-color="#1d212c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="400" fill="url(#vignette)"/>
+
+  <!-- mark: a keycap with the Xbox-style X -->
+  <g transform="translate(88 118)">
+    <rect width="120" height="120" rx="26" fill="url(#cap)" stroke="#262c3c" stroke-width="2"/>
+    <rect x="10" y="10" width="100" height="100" rx="18" fill="#08090d" fill-opacity="0.55"/>
+    <g stroke="url(#brand)" stroke-width="13" stroke-linecap="round">
+      <line x1="41" y1="41" x2="79" y2="79"/>
+      <line x1="79" y1="41" x2="41" y2="79"/>
+    </g>
+    <!-- red / blue stick selectors orbiting the cap -->
+    <circle cx="20" cy="20" r="9" fill="none" stroke="#f43f5e" stroke-width="3"/>
+    <circle cx="100" cy="100" r="9" fill="none" stroke="#9db4ff" stroke-width="3"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="248" y="196" font-family="Geist, Inter, 'Segoe UI', sans-serif" font-size="104" font-weight="700" letter-spacing="-4" fill="url(#brand)">xboard</text>
+  <text x="252" y="240" font-family="'Geist Mono', 'JetBrains Mono', Consolas, monospace" font-size="21" fill="#9ca8bc">type on Windows with an Xbox controller</text>
+
+  <!-- mode chips -->
+  <g font-family="'Geist Mono', 'JetBrains Mono', Consolas, monospace" font-size="15">
+    <g transform="translate(250 266)">
+      <rect width="118" height="32" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="#262c3c"/>
+      <circle cx="19" cy="16" r="4.5" fill="#9db4ff"/>
+      <text x="34" y="21" fill="#f8fafc">keyboard</text>
+    </g>
+    <g transform="translate(380 266)">
+      <rect width="116" height="32" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="#262c3c"/>
+      <circle cx="19" cy="16" r="4.5" fill="#a78bfa"/>
+      <text x="34" y="21" fill="#f8fafc">dual dial</text>
+    </g>
+    <g transform="translate(508 266)">
+      <rect width="130" height="32" rx="16" fill="#ffffff" fill-opacity="0.06" stroke="#262c3c"/>
+      <circle cx="19" cy="16" r="4.5" fill="#34d399"/>
+      <text x="34" y="21" fill="#f8fafc">morse code</text>
+    </g>
+  </g>
+
+  <!-- app sketch -->
+  <g transform="translate(760 62)">
+    <rect x="0" y="0" width="450" height="276" rx="14" fill="url(#chrome)" stroke="#262c3c"/>
+    <rect x="0" y="0" width="450" height="60" fill="url(#glow)" rx="14"/>
+
+    <!-- mode switcher -->
+    <rect x="14" y="12" width="76" height="24" rx="12" fill="#ffffff" fill-opacity="0.04"/>
+    <text x="52" y="28" text-anchor="middle" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#9ca8bc">dial</text>
+    <rect x="98" y="12" width="88" height="24" rx="12" fill="#ffffff" fill-opacity="0.10" stroke="#9db4ff"/>
+    <text x="142" y="28" text-anchor="middle" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#f8fafc">keyboard</text>
+    <rect x="194" y="12" width="76" height="24" rx="12" fill="#ffffff" fill-opacity="0.04"/>
+    <text x="232" y="28" text-anchor="middle" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#9ca8bc">morse</text>
+    <rect x="360" y="12" width="76" height="24" rx="12" fill="#ffffff" fill-opacity="0.04"/>
+    <circle cx="378" cy="24" r="4" fill="#34d399"/>
+    <text x="404" y="28" text-anchor="middle" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#9ca8bc">sound</text>
+
+    <!-- composer -->
+    <rect x="14" y="46" width="422" height="44" rx="10" fill="#08090d" stroke="#262c3c"/>
+    <rect x="28" y="59" width="2" height="18" fill="#9db4ff"/>
+    <rect x="38" y="64" width="176" height="8" rx="4" fill="#9ca8bc" fill-opacity="0.45"/>
+    <rect x="222" y="64" width="64" height="8" rx="4" fill="#9ca8bc" fill-opacity="0.25"/>
+
+    <!-- key grid -->
+    <g fill="url(#cap)" stroke="#262c3c">
+      <rect x="16"  y="100" width="42" height="30" rx="7"/>
+      <rect x="63"  y="100" width="42" height="30" rx="7"/>
+      <rect x="110" y="100" width="42" height="30" rx="7"/>
+      <rect x="157" y="100" width="42" height="30" rx="7"/>
+      <rect x="204" y="100" width="42" height="30" rx="7"/>
+      <rect x="251" y="100" width="42" height="30" rx="7"/>
+      <rect x="298" y="100" width="42" height="30" rx="7"/>
+      <rect x="345" y="100" width="42" height="30" rx="7"/>
+      <rect x="392" y="100" width="42" height="30" rx="7"/>
+
+      <rect x="16"  y="134" width="42" height="30" rx="7"/>
+      <rect x="63"  y="134" width="42" height="30" rx="7"/>
+      <rect x="110" y="134" width="42" height="30" rx="7"/>
+      <rect x="157" y="134" width="42" height="30" rx="7"/>
+      <rect x="204" y="134" width="42" height="30" rx="7"/>
+      <rect x="251" y="134" width="42" height="30" rx="7"/>
+      <rect x="298" y="134" width="42" height="30" rx="7"/>
+      <rect x="345" y="134" width="42" height="30" rx="7"/>
+      <rect x="392" y="134" width="42" height="30" rx="7"/>
+
+      <rect x="16"  y="168" width="42" height="30" rx="7"/>
+      <rect x="63"  y="168" width="42" height="30" rx="7"/>
+      <rect x="110" y="168" width="42" height="30" rx="7"/>
+      <rect x="157" y="168" width="42" height="30" rx="7"/>
+      <rect x="204" y="168" width="42" height="30" rx="7"/>
+      <rect x="251" y="168" width="42" height="30" rx="7"/>
+      <rect x="298" y="168" width="42" height="30" rx="7"/>
+      <rect x="345" y="168" width="42" height="30" rx="7"/>
+      <rect x="392" y="168" width="42" height="30" rx="7"/>
+
+      <rect x="16"  y="202" width="60"  height="30" rx="7"/>
+      <rect x="81"  y="202" width="60"  height="30" rx="7"/>
+      <rect x="146" y="202" width="180" height="30" rx="7"/>
+      <rect x="331" y="202" width="103" height="30" rx="7"/>
+    </g>
+
+    <!-- left stick: red selection. right stick: blue selection -->
+    <rect x="16"  y="100" width="42" height="30" rx="7" fill="none" stroke="#f43f5e" stroke-width="2"/>
+    <text x="52" y="127" text-anchor="end" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="8" fill="#f43f5e">L</text>
+    <rect x="251" y="134" width="42" height="30" rx="7" fill="none" stroke="#9db4ff" stroke-width="2"/>
+    <text x="287" y="161" text-anchor="end" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="8" fill="#9db4ff">R</text>
+
+    <!-- hint bar -->
+    <line x1="0" y1="242" x2="450" y2="242" stroke="#262c3c"/>
+    <text x="16" y="262" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#9ca8bc">A select</text>
+    <text x="92" y="262" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#9ca8bc">X space</text>
+    <text x="168" y="262" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#9ca8bc">B delete</text>
+    <text x="434" y="262" text-anchor="end" font-family="'Geist Mono','JetBrains Mono',Consolas,monospace" font-size="11" fill="#9ca8bc">L3 + R3 quick phrases</text>
+  </g>
+</svg>

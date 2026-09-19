@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <SDL.h>
 
-#define XBOARD_VERSION "2.0.3"
+#define XBOARD_VERSION "2.0.4"
 
 /* Smallest window the shell layout stays readable in; also the compact capture size. */
 #define XBOARD_MIN_WIN_W 1100

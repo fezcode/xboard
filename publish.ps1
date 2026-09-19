@@ -22,6 +22,7 @@ Copy-Item -LiteralPath (Join-Path $root 'README.md') -Destination $publishDir
 Copy-Item -LiteralPath (Join-Path $root 'docs') -Destination $publishDir -Recurse
 New-Item -ItemType Directory -Path (Join-Path $publishDir 'assets') | Out-Null
 Copy-Item -LiteralPath (Join-Path $root 'assets/xboard.png') -Destination (Join-Path $publishDir 'assets')
+Copy-Item -LiteralPath (Join-Path $root 'assets/banner.svg') -Destination (Join-Path $publishDir 'assets')
 $queue = [System.Collections.Generic.Queue[string]]::new()
 $queue.Enqueue((Join-Path $publishDir 'xboard.exe'))
 $seen = @{}

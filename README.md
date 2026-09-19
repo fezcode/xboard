@@ -1,6 +1,8 @@
-# xboard Studio
+<p align="center">
+  <img src="assets/banner.svg" alt="xboard — type on Windows with an Xbox controller" width="100%"/>
+</p>
 
-<img src="assets/xboard.png" width="128" alt="xboard red and blue keycap icon">
+# xboard Studio
 
 A native Windows virtual keyboard for Xbox controllers and a mouse. Built in C11 with SDL2, SDL_ttf and XInput.
 
