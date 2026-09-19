@@ -14,8 +14,11 @@ xboard is not a .NET application and not an Atlas project: do not run `dotnet`,
 `gobake`, `recipe.piml` or `atlas.hub` workflows here. `gobake` applies only when
 rebuilding the sibling Forge toolchain.
 
-The GitHub repository is `fezcode/xboard` and stays **private** unless the user
-explicitly asks otherwise. Never make it public to enable release downloads.
+The GitHub repository is `fezcode/xboard` and is **public** as of v2.0.4. Releases
+and their installer assets are downloadable by anyone, so treat everything
+committed here as published: no secrets, tokens, absolute personal paths or
+private data. Do not change the repository's visibility without an explicit
+request.
 
 Behavioural invariants to preserve: right-stick flick typing in dual-dial mode;
 silent navigation with clicks only on successful text insertion; the red/blue
@@ -51,7 +54,7 @@ When RELEASE is requested, perform these steps in order and stop and report any
 failure before proceeding:
 
 1. **Inspect and bump.** Inspect the worktree, branch, `origin`, tags and GitHub
-   releases/drafts, and confirm the destination is a private `fezcode/xboard`. Use
+   releases/drafts, and confirm the destination is `fezcode/xboard`. Use
    the authenticated `gh` account and never print tokens. Identify the current
    application version and latest published tag; do not copy a version from
    Atelier or from a historical example in this document. If a previous attempt
@@ -172,8 +175,8 @@ inspect the completed steps and resume without duplicate bumps, commits, tags or
 releases.
 
 On success, report the version, commit, test results, installer filename, size and
-SHA-256, the release link, confirmed private visibility, and any verification that
-could not be performed.
+SHA-256, the release link, the repository's confirmed visibility, and any
+verification that could not be performed.
 
 These flows adapt clockt's `AGENTS.md`, which in turn adapts the user's
 `feedback_release_workflow.md` and `feedback_no_commit_attribution.md` notes.

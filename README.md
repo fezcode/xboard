@@ -6,7 +6,39 @@
 
 A native Windows virtual keyboard for Xbox controllers and a mouse. Built in C11 with SDL2, SDL_ttf and XInput.
 
-![Keyboard preview](docs/keyboard.png)
+## Install
+
+Download the latest `xboard-Setup-<version>.exe` from the [Releases page](https://github.com/fezcode/xboard/releases/latest) and run it. The installer targets `%PROGRAMFILES%\xboard`, offers Desktop and Start Menu shortcuts, and can remove its settings on uninstall. Nothing else is required — the app bundles its own runtime DLLs.
+
+To build from source instead, see [Start here](#start-here).
+
+## Screenshots
+
+**Keyboard** — the left stick moves the red `L` selector, the right stick the blue `R` selector, and **A** activates whichever moved last.
+
+![xboard in keyboard mode, with the red L selector on the backtick key and the blue R selector on the 7 key](docs/keyboard.png)
+
+**Dual dial** — choose one of eight groups with the left stick, then flick the right stick to type a character.
+
+![xboard in dual-dial mode, the left dial on the abcd group and the right dial offering a, b, c and d](docs/dial.png)
+
+**Morse code** — left stick for a dot, right stick for a dash, with an 820 Hz tone and the full alphabet on screen.
+
+![xboard in Morse mode, showing the DIT and DAH pads, the decoded character and the alphabet reference](docs/morse.png)
+
+### Themes
+
+Four coordinated dark themes. **F2** or the title-bar button cycles them, and the choice is saved.
+
+| Studio | Violet |
+| --- | --- |
+| ![The Studio theme in dual-dial mode](docs/dial.png) | ![The Violet theme in dual-dial mode](docs/theme-violet.png) |
+
+| Ocean | Graphite |
+| --- | --- |
+| ![The Ocean theme in keyboard mode](docs/theme-ocean.png) | ![The Graphite theme in dual-dial mode](docs/theme-graphite.png) |
+
+Regenerate every capture above with `xboard.exe --screenshot`, which renders one image per mode and theme and exits.
 
 ## Start here
 
