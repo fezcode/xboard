@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 #include "app_state.h"
+#include "app_paths.h"
 #include "audio.h"
 #include "cli.h"
 #include "controller.h"
@@ -93,6 +94,10 @@ int main(int argc, char* argv[]) {
     }
     if (opts.help) { cli_print_usage(stdout); return 0; }
     if (opts.version) { printf("xboard %s\n", XBOARD_VERSION); return 0; }
+
+    /* Move settings from the old %APPDATA%\xboard\xboard folder before anything
+     * resolves or reads the new one. --screenshot leaves preferences untouched. */
+    if (!opts.screenshot) app_migrate_legacy_settings();
 
 #ifdef _WIN32
     /* Set Windows Per-Monitor V2 DPI Awareness before any windows are created

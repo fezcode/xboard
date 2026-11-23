@@ -19,6 +19,7 @@ pkg_check_modules(SDL2_TTF REQUIRED IMPORTED_TARGET SDL2_ttf)
 
 add_library(xboard_core STATIC
   src/app_actions.c
+  src/app_paths.c
   src/app_shell.c
   src/cli.c
   src/text_buffer.c
@@ -45,6 +46,7 @@ if(WIN32)
     user32
     gdi32
     winmm
+    shell32
   )
 endif()
 
@@ -83,4 +85,7 @@ if(BUILD_TESTING)
   add_executable(cli_tests tests/cli_tests.c src/cli.c)
   target_include_directories(cli_tests PRIVATE src)
   add_test(NAME cli_tests COMMAND cli_tests)
+  add_executable(paths_tests tests/paths_tests.c)
+  target_link_libraries(paths_tests PRIVATE xboard_core)
+  add_test(NAME paths_tests COMMAND paths_tests)
 endif()

@@ -6,7 +6,7 @@ $root = $PSScriptRoot
 $version = Get-XboardVersion $root
 $Forge = [IO.Path]::GetFullPath($Forge)
 if (!(Test-Path -LiteralPath $Forge)) { throw "Forge not found: $Forge. Run gobake build in the sibling Forge project." }
-if (!(Test-Path -LiteralPath (Join-Path (Split-Path $Forge -Parent) 'uninstall.exe'))) { throw 'Forge standalone uninstall.exe is missing. Rebuild Forge before packaging.' }
+if (!(Test-Path -LiteralPath (Join-Path (Split-Path $Forge -Parent) 'stub.exe'))) { throw 'Forge 2 stub.exe is missing. Rebuild Forge before packaging.' }
 Invoke-XboardForge $Forge $root @('--version') 'forge-version' | Out-Null
 & (Join-Path $root 'publish.ps1')
 Invoke-XboardForge $Forge $root @('validate') 'forge-validate' | Out-Null
@@ -23,7 +23,7 @@ $installer = Join-Path $dist "xboard-Setup-$version.exe"
 if (!(Test-Path -LiteralPath $installer) -or (Get-Item -LiteralPath $installer).Length -le 0) { throw "Forge produced no valid installer at $installer" }
 $inspection = Invoke-XboardForge $Forge $root @('inspect', $installer) 'forge-inspect'
 $listing = Get-Content -LiteralPath $inspection -Raw
-foreach ($required in @('xboard.exe', 'uninstall.exe', 'theme/theme.css', 'SDL2.dll', 'SDL2_ttf.dll', 'THIRD-PARTY-NOTICES.txt')) {
+foreach ($required in @('xboard.exe', 'wizard/Forge.Wizard.exe', 'wizard/libSkiaSharp.dll', 'wizard/libHarfBuzzSharp.dll', 'SDL2.dll', 'SDL2_ttf.dll', 'THIRD-PARTY-NOTICES.txt')) {
     if (!$listing.Contains($required)) { throw "Installer inspection missing: $required" }
 }
 $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash

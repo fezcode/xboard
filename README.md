@@ -91,7 +91,7 @@ The composer displays the cursor's current line and scrolls horizontally to keep
 
 Local Ctrl+A selects all; the next insertion replaces it. Ctrl+C/V/X/Z/Y copy, paste, cut, undo and redo. Direct mode forwards controller Ctrl shortcuts to the destination app. The toolbar's Copy/Paste/Clear operate on the composer; Undo/Redo target the destination app when direct mode is enabled. The live output is a record of emitted text, not a synchronized view of the external document. External apps control their own undo history and may reject injected input, especially when elevated.
 
-Preferences are stored in `SDL_GetPrefPath("xboard", "xboard")/preferences.ini` on normal exit. Composer text and direct-output mode are never persisted.
+Preferences are stored in `%APPDATA%\fezcode\xboard\preferences.ini` on normal exit; settings left in the old `%APPDATA%\xboard\xboard` folder are moved there on first start. Composer text and direct-output mode are never persisted.
 
 The file holds the theme, mode, sound toggle, window placement and your quick phrases:
 
@@ -143,7 +143,7 @@ The Windows executable embeds `assets/xboard.ico` with seven sizes (16–256 px)
 
 Adapted from Atelier, using `../Forge/build/forge.exe` and `uninstall.exe`. Build the sibling toolchain with `gobake build` in Forge if needed. Override the toolkit path with `-Forge <path-to-forge.exe>`.
 
-The mica wizard installs to Program Files/xboard, offers Desktop and Start Menu shortcuts, registers an uninstaller, and can launch xboard when finished. Settings live in `%APPDATA%/xboard/xboard`; uninstall preserves them unless the user selects settings removal. No Atelier license or file associations are copied into this installer.
+The mica wizard installs to Program Files/xboard, offers Desktop and Start Menu shortcuts, registers an uninstaller, and can launch xboard when finished. Settings live in `%APPDATA%/fezcode/xboard`; uninstall preserves them unless the user selects settings removal. No Atelier license or file associations are copied into this installer.
 
 Packaging builds/tests in `build-release/`, follows DLL imports recursively with the configured MinGW `objdump`, and bundles runtime DLLs alongside the executable. Installed MSYS2 package metadata supplies third-party notices and a dependency inventory. The packaged app does not need MSYS2 on PATH. XInput uses the Windows-provided 9.1.0 API, avoiding the legacy DirectX XInput 1.3 dependency.
 

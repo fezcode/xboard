@@ -2,7 +2,7 @@
 
 [app]
 name    = "xboard"
-version = "2.0.4"
+version = "2.1.0"
 id      = "com.fezcode.xboard"
 icon    = "assets/xboard.ico"
 
@@ -22,7 +22,7 @@ default_dir = "${PROGRAMFILES}/xboard"
 
 [uninstall]
 keep          = []
-settings_dirs = ["${APPDATA}/xboard/xboard"]   # offered as "Also remove my settings and data"
+settings_dirs = ["${APPDATA}/fezcode/xboard"]   # offered as "Also remove my settings and data"
 
 # --- wizard -----------------------------------------------------------------
 

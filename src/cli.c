@@ -53,7 +53,7 @@ const char* cli_usage_text(void) {
         "  Arrows  Move the cursor     Esc  Close help, or quit\n"
         "\n"
         "Preferences, including your quick phrases and window placement, live in\n"
-        "the xboard folder under %APPDATA%.\n";
+        "%APPDATA%\\fezcode\\xboard.\n";
 }
 
 void cli_print_usage(FILE* out) {

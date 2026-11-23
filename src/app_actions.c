@@ -1,4 +1,5 @@
 #include "app_state.h"
+#include "app_paths.h"
 #include "phrases.h"
 #include "audio.h"
 #include "controller.h"
@@ -87,7 +88,7 @@ void app_toggle_direct(AppState* s) {
     app_set_toast(s, s->direct_send_input ? "Direct to apps enabled. Focus the destination window." : "Compose locally, then copy when ready", 2.5f);
 }
 static FILE* preferences(const char* mode) {
-    char* dir = SDL_GetPrefPath("xboard", "xboard");
+    char* dir = app_settings_dir();
     if (!dir) return NULL;
     char path[1024]; snprintf(path, sizeof(path), "%spreferences.ini", dir); SDL_free(dir);
     return fopen(path, mode);
