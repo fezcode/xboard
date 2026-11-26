@@ -13,8 +13,8 @@ support_url = "https://github.com/fezcode/xboard/issues"
 comments    = "A native Windows controller keyboard with dual-stick, dial and Morse input."
 
 [ui]
-# mica = the Windows 11 look, so setup feels native rather than branded.
-theme        = "mica"
+# glass = frosted acrylic over the desktop, matching the other Fezcode installers.
+theme        = "glass"
 window_title = "xboard ${app.version} Setup"
 
 [install]
