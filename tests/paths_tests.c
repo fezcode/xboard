@@ -10,7 +10,9 @@
 #ifdef _WIN32
 #include <windows.h>
 
+static wchar_t base[MAX_PATH];
 static wchar_t root[MAX_PATH];
+static int case_no;
 
 static void path(wchar_t* out, const wchar_t* rel) { _snwprintf(out, MAX_PATH, L"%ls\\%ls", root, rel); }
 static void mkdir_rel(const wchar_t* rel) { wchar_t p[MAX_PATH]; path(p, rel); CreateDirectoryW(p, NULL); }
@@ -29,10 +31,10 @@ static bool migrate(void) {
     path(o, L"xboard\\xboard"); path(n, L"fezcode\\xboard"); path(parent, L"xboard");
     return app_migrate_dir(o, n, parent);
 }
+/* Each case gets its own fresh folder: deleting the previous one can lag
+ * behind (antivirus, indexer) and must never leak files into the next case. */
 static void reset(void) {
-    wchar_t cmd[MAX_PATH * 2];
-    _snwprintf(cmd, MAX_PATH * 2, L"cmd /c rd /s /q \"%ls\" 2>nul", root);
-    _wsystem(cmd);
+    _snwprintf(root, MAX_PATH, L"%ls\\case%d", base, ++case_no);
     CreateDirectoryW(root, NULL);
     mkdir_rel(L"fezcode");
 }
@@ -40,7 +42,8 @@ static void reset(void) {
 int main(int argc, char** argv) {
     (void)argc; (void)argv;
     wchar_t tmp[MAX_PATH]; GetTempPathW(MAX_PATH, tmp);
-    _snwprintf(root, MAX_PATH, L"%lsxboard_paths_test_%lu", tmp, GetCurrentProcessId());
+    _snwprintf(base, MAX_PATH, L"%lsxboard_paths_test_%lu", tmp, GetCurrentProcessId());
+    CreateDirectoryW(base, NULL);
 
     /* Nothing to migrate is a success and a no-op. */
     reset();
@@ -98,7 +101,7 @@ int main(int argc, char** argv) {
     CHECK(content_is(L"fezcode\\xboard\\preferences.ini", "old"));
 
     wchar_t cmd[MAX_PATH * 2];
-    _snwprintf(cmd, MAX_PATH * 2, L"cmd /c rd /s /q \"%ls\" 2>nul", root);
+    _snwprintf(cmd, MAX_PATH * 2, L"cmd /c rd /s /q \"%ls\" 2>nul", base);
     _wsystem(cmd);
     puts("Legacy settings move into the fezcode folder without overwriting anything.");
     return 0;
